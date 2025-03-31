@@ -1,0 +1,257 @@
+-- GUI Principal Mejorada
+local player = game.Players.LocalPlayer
+local playerGui = player:FindFirstChild("PlayerGui")
+if not playerGui then
+    playerGui = Instance.new("PlayerGui")
+    playerGui.Parent = player
+end
+
+local TweenService = game:GetService("TweenService")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
+screenGui.Name = "STD_GUI"
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 320)
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -160)
+-- Fondo pastel rosado
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 182, 193)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Gradiente de rosa: de un rosa pastel en la parte superior a un rosa fuerte abajo
+local gradient = Instance.new("UIGradient")
+gradient.Rotation = 90
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 182, 193)),  -- Rosa pastel
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147))     -- Rosa fuerte
+})
+gradient.Parent = mainFrame
+
+-- Bordes triple: blanco, negro y blanco
+-- Primer borde blanco exterior
+local strokeWhiteOuter = Instance.new("UIStroke")
+strokeWhiteOuter.Thickness = 4
+strokeWhiteOuter.Color = Color3.fromRGB(255,255,255)
+strokeWhiteOuter.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokeWhiteOuter.Parent = mainFrame
+
+-- Borde negro intermedio
+local strokeBlack = Instance.new("UIStroke")
+strokeBlack.Thickness = 2
+strokeBlack.Color = Color3.fromRGB(0,0,0)
+strokeBlack.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokeBlack.Parent = mainFrame
+
+-- Segundo borde blanco interior
+local strokeWhiteInner = Instance.new("UIStroke")
+strokeWhiteInner.Thickness = 1
+strokeWhiteInner.Color = Color3.fromRGB(255,255,255)
+strokeWhiteInner.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokeWhiteInner.Parent = mainFrame
+
+-- Redondear bordes del mainFrame
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 20)
+frameCorner.Parent = mainFrame
+
+-- Función para agregar contorno a textos (bordes negros y luego blanco)
+local function addTextOutline(guiObject)
+    guiObject.TextStrokeTransparency = 0
+    guiObject.TextStrokeColor3 = Color3.new(0, 0, 0)
+    local txtStroke = Instance.new("UIStroke")
+    txtStroke.Thickness = 1
+    txtStroke.Color = Color3.fromRGB(255, 255, 255)
+    txtStroke.Parent = guiObject
+end
+
+-- Función para aplicar transición de desaparición (fade-out) a un objeto GUI
+local function fadeOutAndDestroy(guiObject, duration)
+    local tweenInfo = TweenInfo.new(duration)
+    local tween = TweenService:Create(guiObject, tweenInfo, {BackgroundTransparency = 1, TextTransparency = 1})
+    tween:Play()
+    tween.Completed:Connect(function()
+        guiObject:Destroy()
+    end)
+end
+
+-- Botón de cierre: al presionarlo, se hace fade-out de cada elemento y luego se destruye la GUI
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 69, 69)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 24
+addTextOutline(closeButton)
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 20)
+closeCorner.Parent = closeButton
+closeButton.Parent = mainFrame
+
+closeButton.MouseButton1Click:Connect(function()
+    -- Aplicar fade-out a cada hijo de mainFrame antes de destruir
+    for _, child in ipairs(mainFrame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            local tweenInfo = TweenInfo.new(0.5)
+            local goal = {BackgroundTransparency = 1, TextTransparency = 1}
+            local tween = TweenService:Create(child, tweenInfo, goal)
+            tween:Play()
+        end
+    end
+    wait(0.6)
+    screenGui:Destroy()
+end)
+
+-- Botón de minimizar con transición mejorada
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -70, 0, 5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Font = Enum.Font.SourceSansBold
+minimizeButton.TextSize = 24
+addTextOutline(minimizeButton)
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 20)
+minCorner.Parent = minimizeButton
+minimizeButton.Parent = mainFrame
+
+local minimized = false
+local normalSize = mainFrame.Size
+local minimizedSize = UDim2.new(0, 250, 0, 40)
+
+minimizeButton.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    for _, child in ipairs(mainFrame:GetChildren()) do
+        if (child:IsA("TextLabel") or child:IsA("TextButton")) and child ~= minimizeButton and child ~= closeButton then
+            local tweenInfo = TweenInfo.new(0.3)
+            local goal = {TextTransparency = minimized and 1 or 0}
+            TweenService:Create(child, tweenInfo, goal):Play()
+            child.Visible = not minimized
+        end
+    end
+    local tweenInfo = TweenInfo.new(0.3)
+    local goalSize = {Size = minimized and minimizedSize or normalSize}
+    TweenService:Create(mainFrame, tweenInfo, goalSize):Play()
+end)
+
+-- Campo para ingresar la key
+local keyInput = Instance.new("TextBox")
+keyInput.Size = UDim2.new(0, 200, 0, 30)
+keyInput.Position = UDim2.new(0.5, -100, 0, 50)
+keyInput.PlaceholderText = "Enter Key"
+keyInput.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+keyInput.TextColor3 = Color3.fromRGB(0, 0, 0)
+keyInput.Font = Enum.Font.SourceSansBold
+keyInput.TextSize = 24
+addTextOutline(keyInput)
+local keyCorner = Instance.new("UICorner")
+keyCorner.CornerRadius = UDim.new(0, 20)
+keyCorner.Parent = keyInput
+keyInput.Parent = mainFrame
+
+-- Botón para validar key (ahora acepta dos keys: LoveYourLife y MeGustaSonicXD)
+local verifyButton = Instance.new("TextButton")
+verifyButton.Size = UDim2.new(0, 80, 0, 30)
+verifyButton.Position = UDim2.new(0.5, -40, 0, 90)
+verifyButton.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+verifyButton.Text = "Verify"
+verifyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+verifyButton.Font = Enum.Font.SourceSansBold
+verifyButton.TextSize = 24
+addTextOutline(verifyButton)
+local verifyCorner = Instance.new("UICorner")
+verifyCorner.CornerRadius = UDim.new(0, 20)
+verifyCorner.Parent = verifyButton
+verifyButton.Parent = mainFrame
+
+local verified = false
+
+verifyButton.MouseButton1Click:Connect(function()
+    if keyInput.Text == "LoveYourLife" or keyInput.Text == "MeGustaSonicXD" then
+        verified = true
+        keyInput.Text = "Verified!"
+        keyInput.TextColor3 = Color3.fromRGB(0, 255, 0)
+        -- Sonido de validación correcta (sonido de botón)
+        local sound = Instance.new("Sound")
+        sound.Parent = game.Workspace
+        sound.SoundId = "rbxassetid://1292342610"
+        sound.Volume = 2
+        sound:Play()
+        -- Hacer aparecer los botones de script con transición (fade in)
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child:IsA("TextButton") and child.Name == "ScriptButton" then
+                child.Visible = true
+                local tweenInfo = TweenInfo.new(0.5)
+                local goal = {TextTransparency = 0}
+                TweenService:Create(child, tweenInfo, goal):Play()
+            end
+        end
+    else
+        keyInput.Text = "Incorrect Key!"
+        keyInput.TextColor3 = Color3.fromRGB(255, 0, 0)
+        -- Sonido de key incorrecta
+        local sound = Instance.new("Sound")
+        sound.Parent = game.Workspace
+        sound.SoundId = "rbxassetid://85216484592798"
+        sound.Volume = 2
+        sound:Play()
+    end
+end)
+
+-- Función para crear botones de script con transición y bordes redondeados
+local function createScriptButton(name, positionY, url)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 200, 0, 30)
+    button.Position = UDim2.new(0.5, -100, 0, positionY)
+    button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.SourceSansBold
+    button.TextSize = 24
+    addTextOutline(button)
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 20)
+    btnCorner.Parent = button
+    button.Visible = false
+    button.Name = "ScriptButton"
+    button.Parent = mainFrame
+
+    button.MouseButton1Click:Connect(function()
+        if verified then
+            -- Sonido al presionar botón
+            local sound = Instance.new("Sound")
+            sound.Parent = game.Workspace
+            sound.SoundId = "rbxassetid://1292342610"
+            sound.Volume = 2
+            sound:Play()
+            loadstring(game:HttpGet(url))()
+        end
+    end)
+end
+
+-- Botones de scripts existentes
+createScriptButton("Cream's Glide", 130, "https://raw.githubusercontent.com/SCRIPTSEXE/Sonic.EXE-The-Disaster-Scripts-by-SCRIPTS.EXE/refs/heads/main/Cream's%20Glide")
+createScriptButton("Amy's Hammer Bounce", 170, "https://raw.githubusercontent.com/SCRIPTSEXE/Sonic.EXE-The-Disaster-Scripts-by-SCRIPTS.EXE/refs/heads/main/Amy's%20Hammer%20Bounce")
+-- Nuevo botón: Rouge's Glide
+createScriptButton("Rouge's Glide", 210, "https://raw.githubusercontent.com/SCRIPTSEXE/Sonic.EXE-The-Disaster-Scripts-by-SCRIPTS.EXE/refs/heads/main/Rouge's%20Glide")
+
+-- (Opcional) Si deseas un botón de Discord que copie el link, se podría agregar aquí
+
+-- Créditos
+local creditsLabel = Instance.new("TextLabel")
+creditsLabel.Size = UDim2.new(0, 240, 0, 20)
+creditsLabel.Position = UDim2.new(0.5, -120, 1, -30)
+creditsLabel.Text = "By Script.EXE, wait for more"
+creditsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+creditsLabel.BackgroundTransparency = 1
+creditsLabel.Font = Enum.Font.SourceSansBold
+creditsLabel.TextSize = 24
+addTextOutline(creditsLabel)
+creditsLabel.Parent = mainFrame
