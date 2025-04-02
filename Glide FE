@@ -1,3 +1,17 @@
+local player = game.Players.LocalPlayer
+
+if game.PlaceId == 14722542056 then
+	-- Obtener estadísticas para Cream Glide
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local displayPlayers = ReplicatedStorage:WaitForChild("displayPlayers")
+	local playerStats = displayPlayers:FindFirstChild(player.Name):WaitForChild("stats")
+	local characterValue = playerStats:WaitForChild("character")
+	
+	local function canUseGlide()
+		return characterValue.Value:lower() == "eggman"
+	end
+	
+	---------------------------------------------------------------------
 	-- GUI del botón principal de Glide
 	local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 	gui.Name = "GlideGUI"
