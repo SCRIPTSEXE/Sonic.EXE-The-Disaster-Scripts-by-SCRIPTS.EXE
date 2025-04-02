@@ -1,3 +1,11 @@
+	local player = game.Players.LocalPlayer
+
+-- (Opcional) Si deseas limitar la habilidad al PlaceId, mantenlo; de lo contrario, quítalo.
+if game.PlaceId == 14722542056 then
+	-- Ya no se utiliza characterValue; la habilidad estará disponible para cualquier jugador.
+	
+	---------------------------------------------------------------------
+	-- GUI del botón principal de Glide
 	local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 	gui.Name = "GlideGUI"
 	
@@ -21,6 +29,7 @@
 	titleLabel.Parent = container
 	titleLabel.ZIndex = 105
 	
+	-- (Reutiliza los efectos visuales de embellecimiento del botón)
 	local shadowStain = Instance.new("Frame")
 	shadowStain.Size = UDim2.new(1,10,1,10)
 	shadowStain.Position = UDim2.new(0,-5,0,-5)
@@ -126,11 +135,12 @@
 		NumberSequenceKeypoint.new(1, 0)
 	})
 	
+	-- El icono y demás elementos no dependen del personaje
 	local iconLabel = Instance.new("ImageLabel")
 	iconLabel.Size = UDim2.new(1,0,1,0)
 	iconLabel.Position = UDim2.new(0,0,0,0)
 	iconLabel.BackgroundTransparency = 1
-	iconLabel.Image = "rbxassetid://11112592115"
+	iconLabel.Image = "rbxassetid://85333015880323"  -- Nuevo icono para Glide
 	iconLabel.ImageColor3 = Color3.fromRGB(255,255,255)
 	iconLabel.Parent = effectFrame
 	iconLabel.ZIndex = 103
@@ -165,29 +175,31 @@
 	glideButton.Parent = container
 	glideButton.Draggable = true
 	glideButton.Active = true
-	glideButton.Visible = canUseGlide()
+	glideButton.Visible = true  -- Para cualquier jugador, se asume disponible
 	glideButton.ZIndex = 105
 	
 	---------------------------------------------------------------------
-	-- Parámetros de la habilidad Glide
+	-- Parámetros de Glide (Versión Alternativa para Rouge o cualquier personaje)
+	-- Ajustes modificados:
+	-- Duración: 6s, Ascenso más rápido (ASCEND_SPEED = 5), Descenso acelerado (FASTER_DESCEND_SPEED = -20),
+	-- Cooldown: 25s
 	local FLOAT_FORCE = 90000
 	local DESCEND_SPEED = -2
-	local FASTER_DESCEND_SPEED = -15  -- Descenso más rápido al agotar la energía
-	local ASCEND_SPEED = 3
-	local ENERGY_DURATION = 8
+	local FASTER_DESCEND_SPEED = -20
+	local ASCEND_SPEED = 5
+	local ENERGY_DURATION = 6
 	local energy = ENERGY_DURATION
-	local ENERGY_DRAIN_RATE = 1          -- Drenaje por segundo normal
-	local ASCEND_DRAIN_MULTIPLIER = 2    -- Drena el doble al ascender
-	local speedBoost = 1.25              -- Incrementa velocidad horizontal en 25%
+	local ENERGY_DRAIN_RATE = 1
+	local ASCEND_DRAIN_MULTIPLIER = 2
+	local speedBoost = 1.25
 	
 	local gliding = false
 	local cooldown = false
 	local cooldownActive = false
-	-- holdingJump se activa al usar el botón de Ascend
 	local holdingJump = false
 	local glideForce
 	
-	-- Sonido y animaciones
+	-- Sonido y Animaciones
 	local character = player.Character or player.CharacterAdded:Wait()
 	local humanoid = character:WaitForChild("Humanoid")
 	
@@ -197,24 +209,34 @@
 	glideSound.Looped = true
 	glideSound.Parent = character
 	
+	-- Animaciones combinadas para el Glide (siempre se reproducen ambas)
+	local glideAnim1 = Instance.new("Animation")
+	glideAnim1.AnimationId = "rbxassetid://101979175580754"
+	local glideAnim2 = Instance.new("Animation")
+	glideAnim2.AnimationId = "rbxassetid://17172142074"
+	local glideTrack1 = humanoid:LoadAnimation(glideAnim1)
+	local glideTrack2 = humanoid:LoadAnimation(glideAnim2)
+	
+	-- Nueva animación de ascender
 	local ascendAnim = Instance.new("Animation")
-	ascendAnim.AnimationId = "rbxassetid://18178432722"
+	ascendAnim.AnimationId = "rbxassetid://114881357229681"
+	local ascendTrack = humanoid:LoadAnimation(ascendAnim)
 	
+	-- Nueva animación de descender
 	local descendAnim = Instance.new("Animation")
-	descendAnim.AnimationId = "rbxassetid://136705072136812"
+	descendAnim.AnimationId = "rbxassetid://18471674395"
+	local descendTrack = humanoid:LoadAnimation(descendAnim)
 	
+	-- (Opcional) Animación normal de Glide para efectos visuales adicionales
 	local normalGlideAnim = Instance.new("Animation")
 	normalGlideAnim.AnimationId = "rbxassetid://104077515216832"
-	
-	local ascendTrack = humanoid:LoadAnimation(ascendAnim)
-	local descendTrack = humanoid:LoadAnimation(descendAnim)
 	local normalGlideTrack = humanoid:LoadAnimation(normalGlideAnim)
 	
 	---------------------------------------------------------------------
 	-- Creación de la barra de energía
 	local energyGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 	energyGui.Name = "EnergyBarGUI"
-	energyGui.Enabled = false  -- Se muestra solo durante Glide
+	energyGui.Enabled = false
 	
 	local energyBarBackground = Instance.new("Frame", energyGui)
 	energyBarBackground.Size = UDim2.new(0.3, 0, 0.05, 0)
@@ -237,7 +259,7 @@
 	energyGradient.Rotation = 90
 	
 	---------------------------------------------------------------------
-	-- Función para crear el botón de Ascend
+	-- Función para crear el botón de Ascend (se mantiene igual)
 	local ascendButton
 	local function createAscendButton()
 		local ascContainer = Instance.new("Frame")
@@ -285,7 +307,6 @@
 		ascIconGradient.Rotation = 90
 		ascIconGradient.Color = iconGradient.Color
 		
-		-- Overlay verde para superponer el botón
 		local ascOverlay = Instance.new("Frame", ascContainer)
 		ascOverlay.Size = UDim2.new(1,0,1,0)
 		ascOverlay.Position = UDim2.new(0,0,0,0)
@@ -324,7 +345,7 @@
 	end
 	
 	---------------------------------------------------------------------
-	-- Función para manejar el cooldown
+	-- Función para manejar el cooldown (25s)
 	local function startCooldown(duration)
 		if cooldownActive then return end
 		cooldownActive = true
@@ -369,6 +390,8 @@
 			glideForce:Destroy()
 		end
 		normalGlideTrack:Stop()
+		glideTrack1:Stop()
+		glideTrack2:Stop()
 		ascendTrack:Stop()
 		descendTrack:Stop()
 		glideSound:Stop()
@@ -382,11 +405,11 @@
 			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150,150,150)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
 		})
-		startCooldown(35)
+		startCooldown(25)
 	end
 	
 	local function activateGlide()
-		if cooldownActive or cooldown or not canUseGlide() then return end
+		if cooldownActive or cooldown then return end
 		if humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then return end
 		
 		gliding = true
@@ -400,6 +423,9 @@
 		glideForce.Velocity = Vector3.new(0, DESCEND_SPEED, 0)
 		glideForce.Parent = hrp
 		
+		-- Reproducir las animaciones combinadas para el Glide
+		glideTrack1:Play()
+		glideTrack2:Play()
 		normalGlideTrack:Play()
 		glideSound:Play()
 		
@@ -495,7 +521,7 @@
 		end
 	end)
 	
-	characterValue.Changed:Connect(function()
-		glideButton.Visible = canUseGlide()
-	end)
+	---------------------------------------------------------------------
+	-- Actualizar visibilidad (ya que ya no se usa characterValue)
+	glideButton.Visible = true
 end
