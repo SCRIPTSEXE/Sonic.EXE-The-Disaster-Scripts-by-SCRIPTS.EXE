@@ -4,7 +4,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
 
--- Creamos la GUI y el botón "Glide Lol"
+-- Crear GUI y botón "Glide Lol"
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
@@ -12,17 +12,17 @@ local glideButton = Instance.new("TextButton")
 glideButton.Name = "GlideButton"
 glideButton.Text = "Glide Lol"
 glideButton.Size = UDim2.new(0, 50, 0, 50) -- Botón pequeño
-glideButton.Position = UDim2.new(0.5, -25, 0.8, -25) -- Posición aproximada en la pantalla
+glideButton.Position = UDim2.new(0.5, -25, 0.8, -25) -- Posición en pantalla
 glideButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 glideButton.BorderSizePixel = 0
 glideButton.Parent = screenGui
 
--- Hacemos el botón circular con UICorner
+-- Hacer el botón circular con UICorner
 local uicorner = Instance.new("UICorner")
 uicorner.CornerRadius = UDim.new(1, 0)
 uicorner.Parent = glideButton
 
--- Permitimos que el botón se pueda mover
+-- Hacer que el botón sea movible
 glideButton.Active = true
 glideButton.Draggable = true
 
@@ -33,14 +33,14 @@ local glideCooldownTime = 27
 local currentCooldown = glideCooldownTime
 local touchedConnection
 
--- Definimos la animación (usando el id proporcionado)
+-- Definir la animación
 local animationId = "rbxassetid://104077515216832"
 local animation = Instance.new("Animation")
 animation.AnimationId = animationId
 
 local glideAnimTrack
 
--- Función para iniciar el "glide" (hacer flotar al personaje)
+-- Función para iniciar el "glide" (solo baja)
 local function startGliding()
 	if cooldown then return end
 	if isGliding then
@@ -50,23 +50,19 @@ local function startGliding()
 	isGliding = true
 	
 	-- Reproducir la animación
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator", humanoid)
-	end
+	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
 	glideAnimTrack = animator:LoadAnimation(animation)
 	glideAnimTrack:Play()
 	
-	-- Aplicar fuerza para hacer flotar al personaje (ajusta los valores según necesidad)
+	-- Aplicar fuerza para hacer descender al personaje lentamente
 	local bodyVelocity = Instance.new("BodyVelocity")
 	bodyVelocity.Name = "GlideVelocity"
 	bodyVelocity.Parent = rootPart
-	bodyVelocity.Velocity = Vector3.new(0, 10, 0)
-	bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+	bodyVelocity.Velocity = Vector3.new(0, -5, 0) -- Movimiento descendente
+	bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0) -- Solo afecta el eje Y
 	
-	-- Detectar cuando se toca el suelo para detener el glide
+	-- Detectar cuando toca el suelo para detener el glide
 	local function onTouched(hit)
-		-- Aquí se asume que el suelo es parte del Terrain o tiene nombre "Baseplate"
 		if hit:IsDescendantOf(workspace.Terrain) or hit.Name == "Baseplate" then
 			stopGliding()
 		end
@@ -75,29 +71,29 @@ local function startGliding()
 	touchedConnection = rootPart.Touched:Connect(onTouched)
 end
 
--- Función para detener el glide y activar el cooldown
+-- Función para detener el glide y activar cooldown
 function stopGliding()
 	if not isGliding then return end
 	isGliding = false
 	
-	-- Detener la animación si está reproduciéndose
+	-- Detener la animación
 	if glideAnimTrack then
 		glideAnimTrack:Stop()
 	end
 	
-	-- Eliminar la fuerza de flotación
+	-- Eliminar la fuerza de descenso
 	local velocity = rootPart:FindFirstChild("GlideVelocity")
 	if velocity then
 		velocity:Destroy()
 	end
 	
-	-- Desconectar el evento de contacto con el suelo
+	-- Desconectar el evento de colisión con el suelo
 	if touchedConnection then
 		touchedConnection:Disconnect()
 		touchedConnection = nil
 	end
 	
-	-- Iniciar el cooldown de 27 segundos con contador en el botón
+	-- Activar cooldown de 27 segundos con contador en el botón
 	cooldown = true
 	currentCooldown = glideCooldownTime
 	glideButton.Text = tostring(currentCooldown)
@@ -113,7 +109,7 @@ function stopGliding()
 	end)
 end
 
--- Conexión del botón para activar/desactivar el glide
+-- Conectar botón para activar/desactivar el glide
 glideButton.MouseButton1Click:Connect(function()
 	if cooldown then return end
 	if isGliding then
