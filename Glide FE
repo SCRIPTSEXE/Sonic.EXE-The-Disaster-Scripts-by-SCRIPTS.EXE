@@ -1,288 +1,124 @@
+-- Referencias al jugador y su personaje
 local player = game.Players.LocalPlayer
-
--- Solo ejecutamos en el PlaceId indicado
-if game.PlaceId ~= 14722542056 then return end
-
--- VARIABLES Y SERVICIOS
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local PlayerGui = player:WaitForChild("PlayerGui")
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
 
--- Parámetros de la habilidad
-local FLOAT_FORCE = 90000
-local DESCEND_SPEED = -2
-local FASTER_DESCEND_SPEED = -15
-local ASCEND_SPEED = 5
-local ENERGY_DURATION = 8
-local ENERGY_DRAIN_RATE = 1
-local ASCEND_DRAIN_MULTIPLIER = 2
-local speedBoost = 1.25
+-- Creamos la GUI y el botón "Glide Lol"
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
-local energy = ENERGY_DURATION
-local gliding = false
+local glideButton = Instance.new("TextButton")
+glideButton.Name = "GlideButton"
+glideButton.Text = "Glide Lol"
+glideButton.Size = UDim2.new(0, 50, 0, 50) -- Botón pequeño
+glideButton.Position = UDim2.new(0.5, -25, 0.8, -25) -- Posición aproximada en la pantalla
+glideButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+glideButton.BorderSizePixel = 0
+glideButton.Parent = screenGui
+
+-- Hacemos el botón circular con UICorner
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(1, 0)
+uicorner.Parent = glideButton
+
+-- Permitimos que el botón se pueda mover
+glideButton.Active = true
+glideButton.Draggable = true
+
+-- Variables de estado
+local isGliding = false
 local cooldown = false
-local cooldownActive = false
-local holdingJump = false
-local glideForce
+local glideCooldownTime = 27
+local currentCooldown = glideCooldownTime
+local touchedConnection
 
--- Crear Sound (volumen aumentado)
-local glideSound = Instance.new("Sound")
-glideSound.SoundId = "rbxassetid://11059585155"
-glideSound.Volume = 3
-glideSound.Looped = true
-glideSound.Parent = character
+-- Definimos la animación (usando el id proporcionado)
+local animationId = "rbxassetid://104077515216832"
+local animation = Instance.new("Animation")
+animation.AnimationId = animationId
 
--- Crear Animaciones (solo la de ascend se usará)
-local ascendAnim = Instance.new("Animation")
-ascendAnim.AnimationId = "rbxassetid://18178432722"
-local descendAnim = Instance.new("Animation")
-descendAnim.AnimationId = "rbxassetid://136705072136812"
-local normalGlideAnim = Instance.new("Animation")
-normalGlideAnim.AnimationId = "rbxassetid://104077515216832"
+local glideAnimTrack
 
-local ascendTrack = humanoid:LoadAnimation(ascendAnim)
-local descendTrack = humanoid:LoadAnimation(descendAnim)
-local normalGlideTrack = humanoid:LoadAnimation(normalGlideAnim)
-
--- Crear GUI principal (Glide)
-local glideGui = Instance.new("ScreenGui", PlayerGui)
-glideGui.Name = "GlideGUI"
-
-local mainButton = Instance.new("ImageButton", glideGui)
-mainButton.Size = UDim2.new(0,60,0,60)
-mainButton.Position = UDim2.new(1,-80,0.4,-30)
-mainButton.BackgroundTransparency = 1
-mainButton.ZIndex = 10
-mainButton.Image = ""  -- Puedes asignar una imagen de fondo si lo deseas
-
-local titleLabel = Instance.new("TextLabel", mainButton)
-titleLabel.Size = UDim2.new(1,0,0,20)
-titleLabel.Position = UDim2.new(0,0,-0.4,0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Glide"
-titleLabel.TextScaled = true
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.TextColor3 = Color3.new(1,1,1)
-titleLabel.ZIndex = 11
-
--- Crear Energy Bar GUI
-local energyGui = Instance.new("ScreenGui", PlayerGui)
-energyGui.Name = "EnergyBarGUI"
-energyGui.Enabled = false
-
-local energyBarBackground = Instance.new("Frame", energyGui)
-energyBarBackground.Size = UDim2.new(0.3,0,0.05,0)
-energyBarBackground.Position = UDim2.new(0.35,0,0.85,0)
-energyBarBackground.BackgroundColor3 = Color3.fromRGB(255,0,0) -- Borde rojo
-energyBarBackground.BorderSizePixel = 2
-
--- Borde con gradiente rojo a rojo oscuro
-local borderGradient = Instance.new("UIGradient", energyBarBackground)
-borderGradient.Rotation = 90
-borderGradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(139,0,0))
-})
-
-local energyBar = Instance.new("Frame", energyBarBackground)
-energyBar.Size = UDim2.new(1,-4,1,-4)
-energyBar.Position = UDim2.new(0,2,0,2)
-energyBar.BackgroundColor3 = Color3.fromRGB(255,165,0) -- Naranja
-
-local fillGradient = Instance.new("UIGradient", energyBar)
-fillGradient.Rotation = 90
-fillGradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,165,0)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(255,69,0))
-})
-
--- Variable para el botón de Ascend (se crea al activar Glide)
-local ascendButton
-
--- Función para crear el botón de Ascend (desde cero)
-local function createAscendButton()
-	local btn = Instance.new("ImageButton", glideGui)
-	btn.Size = UDim2.new(0,60,0,60)
-	btn.Position = mainButton.Position - UDim2.new(0,70,0,0)
-	btn.BackgroundTransparency = 1
-	btn.ZIndex = 10
-	-- Título (opcional)
-	local lbl = Instance.new("TextLabel", btn)
-	lbl.Size = UDim2.new(1,0,0,20)
-	lbl.Position = UDim2.new(0,0,-0.4,0)
-	lbl.BackgroundTransparency = 1
-	lbl.Text = "Ascend"
-	lbl.TextScaled = true
-	lbl.Font = Enum.Font.SourceSansBold
-	lbl.TextColor3 = Color3.new(1,1,1)
-	lbl.ZIndex = 11
-	-- Crear el icono con la imagen deseada
-	local icon = Instance.new("ImageLabel", btn)
-	icon.Size = UDim2.new(1,0,1,0)
-	icon.Position = UDim2.new(0,0,0,0)
-	icon.BackgroundTransparency = 1
-	icon.Image = "rbxassetid://82713441014157"
-	icon.ImageColor3 = Color3.new(1,1,1)
-	icon.ZIndex = 12
-	-- Crear un gradiente para el icono (por defecto blanco)
-	local iconGradient = Instance.new("UIGradient", icon)
-	iconGradient.Rotation = 90
-	iconGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
-		ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
-	})
-	
-	-- Eventos para activar/desactivar ascend
-	btn.MouseButton1Down:Connect(function()
-		if gliding and energy > 0 then
-			holdingJump = true
-			icon.ImageColor3 = Color3.new(0,1,0)  -- overlay verde
-			iconGradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(0,1,0)),
-				ColorSequenceKeypoint.new(1, Color3.new(0,0.5,0))
-			})
-			ascendTrack:Play()
-		end
-	end)
-	btn.MouseButton1Up:Connect(function()
-		if gliding then
-			holdingJump = false
-			icon.ImageColor3 = Color3.new(1,1,1)
-			iconGradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
-			})
-			ascendTrack:Stop()
-		end
-	end)
-	return btn
-end
-
--- Función para manejar el cooldown (deshabilita el efecto en el botón principal)
-local function startCooldown(duration)
-	if cooldownActive then return end
-	cooldownActive = true
-	-- Se puede agregar una cuenta regresiva en la GUI de energy si se desea
-	for i = duration, 1, -1 do
-		wait(1)
-	end
-	cooldownActive = false
-	cooldown = false
-end
-
--- Función para detener Glide
-local function stopGlide()
-	if not gliding then return end
-	gliding = false
-	energyGui.Enabled = false
-	if ascendButton then
-		ascendButton:Destroy()
-		ascendButton = nil
-	end
-	if glideForce then
-		glideForce:Destroy()
-	end
-	normalGlideTrack:Stop()
-	ascendTrack:Stop()
-	descendTrack:Stop()
-	glideSound:Stop()
-	cooldown = true
-	startCooldown(35)
-end
-
--- Función para activar Glide
-local function activateGlide()
+-- Función para iniciar el "glide" (hacer flotar al personaje)
+local function startGliding()
 	if cooldown then return end
-	if humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then return end
-	
-	gliding = true
-	energy = ENERGY_DURATION
-	energyGui.Enabled = true
-	
-	local hrp = character:WaitForChild("HumanoidRootPart")
-	glideForce = Instance.new("BodyVelocity")
-	glideForce.Name = "GlideForce"
-	glideForce.MaxForce = Vector3.new(0, FLOAT_FORCE, 0)
-	glideForce.Velocity = Vector3.new(0, DESCEND_SPEED, 0)
-	glideForce.Parent = hrp
-	
-	normalGlideTrack:Play()
-	glideSound:Play()
-	
-	local currentVel = hrp.Velocity
-	local boostedVel = Vector3.new(currentVel.X * speedBoost, glideForce.Velocity.Y, currentVel.Z * speedBoost)
-	glideForce.Velocity = boostedVel
-	
-	-- Crear botón Ascend
-	if not ascendButton then
-		ascendButton = createAscendButton()
+	if isGliding then
+		stopGliding()
+		return
 	end
+	isGliding = true
+	
+	-- Reproducir la animación
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator", humanoid)
+	end
+	glideAnimTrack = animator:LoadAnimation(animation)
+	glideAnimTrack:Play()
+	
+	-- Aplicar fuerza para hacer flotar al personaje (ajusta los valores según necesidad)
+	local bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.Name = "GlideVelocity"
+	bodyVelocity.Parent = rootPart
+	bodyVelocity.Velocity = Vector3.new(0, 10, 0)
+	bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+	
+	-- Detectar cuando se toca el suelo para detener el glide
+	local function onTouched(hit)
+		-- Aquí se asume que el suelo es parte del Terrain o tiene nombre "Baseplate"
+		if hit:IsDescendantOf(workspace.Terrain) or hit.Name == "Baseplate" then
+			stopGliding()
+		end
+	end
+	
+	touchedConnection = rootPart.Touched:Connect(onTouched)
 end
 
--- Conexiones de entrada para activar/desactivar Glide
-mainButton.MouseButton1Click:Connect(function()
-	if gliding then
-		stopGlide()
-	else
-		activateGlide()
+-- Función para detener el glide y activar el cooldown
+function stopGliding()
+	if not isGliding then return end
+	isGliding = false
+	
+	-- Detener la animación si está reproduciéndose
+	if glideAnimTrack then
+		glideAnimTrack:Stop()
 	end
-end)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.P then
-		if gliding then
-			stopGlide()
-		else
-			activateGlide()
+	
+	-- Eliminar la fuerza de flotación
+	local velocity = rootPart:FindFirstChild("GlideVelocity")
+	if velocity then
+		velocity:Destroy()
+	end
+	
+	-- Desconectar el evento de contacto con el suelo
+	if touchedConnection then
+		touchedConnection:Disconnect()
+		touchedConnection = nil
+	end
+	
+	-- Iniciar el cooldown de 27 segundos con contador en el botón
+	cooldown = true
+	currentCooldown = glideCooldownTime
+	glideButton.Text = tostring(currentCooldown)
+	
+	spawn(function()
+		while currentCooldown > 0 do
+			wait(1)
+			currentCooldown = currentCooldown - 1
+			glideButton.Text = tostring(currentCooldown)
 		end
-	end
-end)
-humanoid.StateChanged:Connect(function(_, newState)
-	if newState == Enum.HumanoidStateType.Landed and gliding then
-		stopGlide()
-	end
-end)
+		cooldown = false
+		glideButton.Text = "Glide Lol"
+	end)
+end
 
--- Bucle principal para el Glide
-RunService.RenderStepped:Connect(function(dt)
-	if gliding and glideForce and character then
-		local drain = holdingJump and (ENERGY_DRAIN_RATE * ASCEND_DRAIN_MULTIPLIER) or ENERGY_DRAIN_RATE
-		energy = energy - dt * drain
-		if energy < 0 then energy = 0 end
-		
-		local percent = energy / ENERGY_DURATION
-		energyBar.Size = UDim2.new(percent, 0, 1, 0)
-		
-		-- Actualizar el gradiente del fill: de naranja (lleno) a gris/negro (vacío)
-		local startColor = Color3.fromRGB(255,165,0)
-		local endColor = Color3.fromRGB(128,128,128)
-		local topColor = startColor:Lerp(endColor, 1 - percent)
-		local bottomStart = Color3.fromRGB(255,69,0)
-		local bottomEnd = Color3.new(0,0,0)
-		local bottomColor = bottomStart:Lerp(bottomEnd, 1 - percent)
-		fillGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, topColor),
-			ColorSequenceKeypoint.new(1, bottomColor)
-		})
-		
-		local hrp = character:WaitForChild("HumanoidRootPart")
-		if energy <= 0 then
-			if holdingJump then
-				holdingJump = false
-				ascendTrack:Stop()
-			end
-			if not descendTrack.IsPlaying then
-				descendTrack:Play()
-			end
-			glideForce.Velocity = Vector3.new(hrp.Velocity.X * speedBoost, FASTER_DESCEND_SPEED, hrp.Velocity.Z * speedBoost)
-		else
-			if holdingJump then
-				glideForce.Velocity = Vector3.new(hrp.Velocity.X * speedBoost, ASCEND_SPEED, hrp.Velocity.Z * speedBoost)
-			else
-				glideForce.Velocity = Vector3.new(hrp.Velocity.X * speedBoost, DESCEND_SPEED, hrp.Velocity.Z * speedBoost)
-			end
-		end
+-- Conexión del botón para activar/desactivar el glide
+glideButton.MouseButton1Click:Connect(function()
+	if cooldown then return end
+	if isGliding then
+		stopGliding()
+	else
+		startGliding()
 	end
 end)
