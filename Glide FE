@@ -1,18 +1,19 @@
 local player = game.Players.LocalPlayer
 
 if game.PlaceId == 14722542056 then
-	-- Obtener estadísticas para Cream Glide
+	-- Se eliminan las líneas relacionadas con characterValue para que funcione para todos
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local displayPlayers = ReplicatedStorage:WaitForChild("displayPlayers")
-	local playerStats = displayPlayers:FindFirstChild(player.Name):WaitForChild("stats")
-	local characterValue = playerStats:WaitForChild("character")
+	-- local playerStats = displayPlayers:FindFirstChild(player.Name):WaitForChild("stats")
+	-- local characterValue = playerStats:WaitForChild("character")
 	
+	-- Ahora se permite Glide a todos
 	local function canUseGlide()
-		return characterValue.Value:lower() == "eggman"
+		return true
 	end
 	
 	---------------------------------------------------------------------
-	-- GUI del botón principal de Glide
+	-- GUI del botón principal de Glide (mismo embellecimiento que el original)
 	local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 	gui.Name = "GlideGUI"
 	
@@ -36,6 +37,7 @@ if game.PlaceId == 14722542056 then
 	titleLabel.Parent = container
 	titleLabel.ZIndex = 105
 	
+	-- Elementos gráficos base (sombra, bordes, gradientes) se crean y reutilizan en ambos botones
 	local shadowStain = Instance.new("Frame")
 	shadowStain.Size = UDim2.new(1,10,1,10)
 	shadowStain.Position = UDim2.new(0,-5,0,-5)
@@ -141,26 +143,7 @@ if game.PlaceId == 14722542056 then
 		NumberSequenceKeypoint.new(1, 0)
 	})
 	
-	local iconLabel = Instance.new("ImageLabel")
-	iconLabel.Size = UDim2.new(1,0,1,0)
-	iconLabel.Position = UDim2.new(0,0,0,0)
-	iconLabel.BackgroundTransparency = 1
-	iconLabel.Image = "rbxassetid://11112592115"
-	iconLabel.ImageColor3 = Color3.fromRGB(255,255,255)
-	iconLabel.Parent = effectFrame
-	iconLabel.ZIndex = 103
-	
-	local iconGradient = Instance.new("UIGradient", iconLabel)
-	iconGradient.Rotation = 90
-	iconGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150,150,150)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
-	})
-	iconGradient.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(1, 0.55)
-	})
+	-- Se elimina la creación del icono del botón Glide en este contenedor, ya que será exclusivo del botón principal.
 	
 	local cooldownText = Instance.new("TextLabel")
 	cooldownText.Size = UDim2.new(0,30,0,30)
@@ -184,21 +167,20 @@ if game.PlaceId == 14722542056 then
 	glideButton.ZIndex = 105
 	
 	---------------------------------------------------------------------
-	-- Parámetros de la habilidad Glide
+	-- Parámetros de la habilidad mejorada
 	local FLOAT_FORCE = 90000
 	local DESCEND_SPEED = -2
 	local FASTER_DESCEND_SPEED = -15  -- Descenso más rápido al agotar la energía
-	local ASCEND_SPEED = 3
+	local ASCEND_SPEED = 5           -- Ascenso a 5
 	local ENERGY_DURATION = 8
 	local energy = ENERGY_DURATION
-	local ENERGY_DRAIN_RATE = 1          -- Drenaje por segundo normal
-	local ASCEND_DRAIN_MULTIPLIER = 2    -- Drena el doble al ascender
-	local speedBoost = 1.25              -- Incrementa velocidad horizontal en 25%
+	local ENERGY_DRAIN_RATE = 1          -- Drenaje por segundo en modo normal
+	local ASCEND_DRAIN_MULTIPLIER = 2    -- Se drena el doble cuando se eleva
+	local speedBoost = 1.25              -- Aumento del 25% en la velocidad horizontal
 	
 	local gliding = false
 	local cooldown = false
 	local cooldownActive = false
-	-- holdingJump se activa al usar el botón de Ascend
 	local holdingJump = false
 	local glideForce
 	
@@ -208,10 +190,11 @@ if game.PlaceId == 14722542056 then
 	
 	local glideSound = Instance.new("Sound")
 	glideSound.SoundId = "rbxassetid://11059585155"
-	glideSound.Volume = 1
+	glideSound.Volume = 3  -- Volumen aumentado
 	glideSound.Looped = true
 	glideSound.Parent = character
 	
+	-- Animación de ascenso (nueva)
 	local ascendAnim = Instance.new("Animation")
 	ascendAnim.AnimationId = "rbxassetid://18178432722"
 	
@@ -219,14 +202,14 @@ if game.PlaceId == 14722542056 then
 	descendAnim.AnimationId = "rbxassetid://136705072136812"
 	
 	local normalGlideAnim = Instance.new("Animation")
-	normalGlideAnim.AnimationId = "rbxassetid://104077515216832"
+	normalGlideAnim.AnimationId = "rbxassetid://104077515216832" -- Animación normal (se puede ajustar)
 	
 	local ascendTrack = humanoid:LoadAnimation(ascendAnim)
 	local descendTrack = humanoid:LoadAnimation(descendAnim)
 	local normalGlideTrack = humanoid:LoadAnimation(normalGlideAnim)
 	
 	---------------------------------------------------------------------
-	-- Creación de la barra de energía
+	-- Creación de la barra de energía (más arriba y más gorda)
 	local energyGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 	energyGui.Name = "EnergyBarGUI"
 	energyGui.Enabled = false  -- Se muestra solo durante Glide
@@ -234,8 +217,8 @@ if game.PlaceId == 14722542056 then
 	local energyBarBackground = Instance.new("Frame", energyGui)
 	energyBarBackground.Size = UDim2.new(0.3, 0, 0.05, 0)
 	energyBarBackground.Position = UDim2.new(0.35, 0, 0.85, 0)
-	energyBarBackground.BackgroundColor3 = Color3.fromRGB(255,0,0)
-	energyBarBackground.BorderSizePixel = 0
+	energyBarBackground.BackgroundColor3 = Color3.fromRGB(255,0,0)  -- Borde rojo
+	energyBarBackground.BorderSizePixel = 2
 	local borderGradient = Instance.new("UIGradient", energyBarBackground)
 	borderGradient.Rotation = 90
 	borderGradient.Color = ColorSequence.new({
@@ -246,13 +229,17 @@ if game.PlaceId == 14722542056 then
 	local energyBar = Instance.new("Frame", energyBarBackground)
 	energyBar.Size = UDim2.new(1, -4, 1, -4)
 	energyBar.Position = UDim2.new(0,2,0,2)
-	energyBar.BackgroundColor3 = Color3.fromRGB(255,165,0)
-	
-	local energyGradient = Instance.new("UIGradient", energyBar)
-	energyGradient.Rotation = 90
+	energyBar.BackgroundColor3 = Color3.fromRGB(255,165,0)  -- Relleno naranja
+	local fillGradient = Instance.new("UIGradient", energyBar)
+	fillGradient.Rotation = 90
+	fillGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255,165,0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255,69,0))
+	})
 	
 	---------------------------------------------------------------------
-	-- Función para crear el botón de Ascend
+	-- Función para crear el botón de Ascend (único cuando Glide está activo)
+	-- Se crea desde cero para evitar heredar propiedades no deseadas
 	local ascendButton
 	local function createAscendButton()
 		local ascContainer = Instance.new("Frame")
@@ -262,11 +249,12 @@ if game.PlaceId == 14722542056 then
 		ascContainer.Parent = gui
 		ascContainer.ZIndex = 100
 		
+		-- Título del botón
 		local ascTitle = Instance.new("TextLabel")
 		ascTitle.Size = UDim2.new(0,60,0,20)
 		ascTitle.Position = UDim2.new(0,0,-0.4,0)
 		ascTitle.BackgroundTransparency = 1
-		ascTitle.Text = "ascend"
+		ascTitle.Text = "Ascend"
 		ascTitle.TextScaled = true
 		ascTitle.TextColor3 = Color3.new(1,1,1)
 		ascTitle.FontFace = Font.new("rbxassetid://12187371840", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
@@ -275,6 +263,7 @@ if game.PlaceId == 14722542056 then
 		ascTitle.Parent = ascContainer
 		ascTitle.ZIndex = 105
 		
+		-- Sombra y bordes (se clonan del botón principal)
 		local ascShadow = shadowStain:Clone()
 		ascShadow.Parent = ascContainer
 		
@@ -284,53 +273,70 @@ if game.PlaceId == 14722542056 then
 		local ascInner = innerBorder:Clone()
 		ascInner.Parent = ascOuter
 		
-		local ascEffect = effectFrame:Clone()
+		-- Creamos un frame para el efecto del botón (con gradiente blanco por defecto)
+		local ascEffect = Instance.new("Frame")
+		ascEffect.Size = UDim2.new(1, -6, 1, -6)
+		ascEffect.Position = UDim2.new(0,3,0,3)
+		ascEffect.BackgroundColor3 = Color3.fromRGB(255,255,255)
 		ascEffect.Parent = ascInner
+		ascContainer.ascEffect = ascEffect
 		
+		local ascEffectGradient = Instance.new("UIGradient", ascEffect)
+		ascEffectGradient.Rotation = 90
+		ascEffectGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+		})
+		
+		-- Creamos el icono nuevo para Ascend con la imagen correcta
 		local ascIcon = Instance.new("ImageLabel")
 		ascIcon.Size = UDim2.new(1,0,1,0)
 		ascIcon.Position = UDim2.new(0,0,0,0)
 		ascIcon.BackgroundTransparency = 1
-		ascIcon.Image = "rbxassetid://90592906479776"
+		ascIcon.Image = "rbxassetid://82713441014157"  -- Imagen deseada
 		ascIcon.ImageColor3 = Color3.fromRGB(255,255,255)
 		ascIcon.Parent = ascEffect
 		ascIcon.ZIndex = 103
+		ascContainer.ascIcon = ascIcon
 		
 		local ascIconGradient = Instance.new("UIGradient", ascIcon)
 		ascIconGradient.Rotation = 90
-		ascIconGradient.Color = iconGradient.Color
+		ascIconGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150,150,150)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
+		})
 		
-		-- Overlay verde para superponer el botón
-		local ascOverlay = Instance.new("Frame", ascContainer)
-		ascOverlay.Size = UDim2.new(1,0,1,0)
-		ascOverlay.Position = UDim2.new(0,0,0,0)
-		ascOverlay.BackgroundColor3 = Color3.new(0,1,0)
-		ascOverlay.BackgroundTransparency = 0.5
-		ascOverlay.Visible = false
-		ascOverlay.ZIndex = 200
-		local overlayCorner = Instance.new("UICorner", ascOverlay)
-		overlayCorner.CornerRadius = UDim.new(1,0)
+		-- Se crea el botón para detectar clics en el contenedor
+		local ascButtonObj = Instance.new("ImageButton")
+		ascButtonObj.Size = UDim2.new(1,0,1,0)
+		ascButtonObj.Position = UDim2.new(0,0,0,0)
+		ascButtonObj.BackgroundTransparency = 1
+		ascButtonObj.Parent = ascContainer
+		ascButtonObj.Draggable = true
+		ascButtonObj.Active = true
+		ascButtonObj.ZIndex = 105
 		
-		local ascButton = Instance.new("ImageButton")
-		ascButton.Size = UDim2.new(1,0,1,0)
-		ascButton.Position = UDim2.new(0,0,0,0)
-		ascButton.BackgroundTransparency = 1
-		ascButton.Parent = ascContainer
-		ascButton.Draggable = true
-		ascButton.Active = true
-		ascButton.ZIndex = 207
-		
-		ascButton.MouseButton1Down:Connect(function()
+		ascButtonObj.MouseButton1Down:Connect(function()
 			if gliding and energy > 0 then
 				holdingJump = true
-				ascOverlay.Visible = true
+				-- Cambiar overlay a verde en el icono y efecto
+				ascIcon.ImageColor3 = Color3.new(0,1,0)
+				ascEffectGradient.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.new(0,1,0)),
+					ColorSequenceKeypoint.new(1, Color3.new(0,0.5,0))
+				})
 				ascendTrack:Play()
 			end
 		end)
-		ascButton.MouseButton1Up:Connect(function()
+		ascButtonObj.MouseButton1Up:Connect(function()
 			if gliding then
 				holdingJump = false
-				ascOverlay.Visible = false
+				ascIcon.ImageColor3 = Color3.fromRGB(255,255,255)
+				ascEffectGradient.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+				})
 				ascendTrack:Stop()
 			end
 		end)
@@ -349,11 +355,6 @@ if game.PlaceId == 14722542056 then
 			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,0,0)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
 		})
-		iconGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,0,0)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
-		})
 		for i = duration, 1, -1 do
 			cooldownText.Text = tostring(i)
 			task.wait(1)
@@ -364,11 +365,6 @@ if game.PlaceId == 14722542056 then
 		effectFrameGradient.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
-		})
-		iconGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150,150,150)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
 		})
 	end
 	
@@ -387,21 +383,12 @@ if game.PlaceId == 14722542056 then
 		ascendTrack:Stop()
 		descendTrack:Stop()
 		glideSound:Stop()
-		effectFrame.BackgroundTransparency = 0
-		effectFrameGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
-		})
-		iconGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150,150,150)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
-		})
+		cooldown = true
 		startCooldown(35)
 	end
 	
 	local function activateGlide()
-		if cooldownActive or cooldown or not canUseGlide() then return end
+		if cooldown or not canUseGlide() then return end
 		if humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then return end
 		
 		gliding = true
@@ -422,26 +409,13 @@ if game.PlaceId == 14722542056 then
 		local boostedVel = Vector3.new(currentVel.X * speedBoost, glideForce.Velocity.Y, currentVel.Z * speedBoost)
 		glideForce.Velocity = boostedVel
 		
-		effectFrame.BackgroundTransparency = 0.5
-		effectFrameGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0,255,0)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
-		})
-		iconLabel.ImageColor3 = Color3.fromRGB(255,255,255)
-		iconGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0,255,0)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0))
-		})
-		
 		if not ascendButton then
 			ascendButton = createAscendButton()
 		end
 	end
 	
 	---------------------------------------------------------------------
-	-- Conexiones de entrada para activar/desactivar Glide
+	-- Conexiones de entrada para activar/desactivar Glide con el botón y la tecla P
 	local UserInputService = game:GetService("UserInputService")
 	
 	glideButton.MouseButton1Click:Connect(function()
@@ -470,31 +444,42 @@ if game.PlaceId == 14722542056 then
 	end)
 	
 	---------------------------------------------------------------------
-	-- Bucle principal de Glide
+	-- Bucle principal del Glide
 	game:GetService("RunService").RenderStepped:Connect(function(dt)
 		if gliding and glideForce and player.Character then
 			local drain = holdingJump and (ENERGY_DRAIN_RATE * ASCEND_DRAIN_MULTIPLIER) or ENERGY_DRAIN_RATE
 			energy = energy - dt * drain
 			if energy < 0 then energy = 0 end
 			
-			local normalTop = Color3.fromRGB(255,165,0)
-			local normalBottom = Color3.fromRGB(255,69,0)
-			local drainedTop = Color3.fromRGB(128,128,128)
-			local drainedBottom = Color3.new(0,0,0)
-			local topColor = normalTop:Lerp(drainedTop, 1 - (energy / ENERGY_DURATION))
-			local bottomColor = normalBottom:Lerp(drainedBottom, 1 - (energy / ENERGY_DURATION))
-			energyGradient.Color = ColorSequence.new({
+			local percent = energy / ENERGY_DURATION
+			energyBar.Size = UDim2.new(percent, 0, 1, 0)
+			
+			-- Interpolación del gradiente del relleno de naranja a gris/negro
+			local startColor = Color3.fromRGB(255,165,0) -- naranja
+			local endColor = Color3.fromRGB(128,128,128)  -- gris
+			local topColor = startColor:Lerp(endColor, 1 - percent)
+			
+			local bottomStart = Color3.fromRGB(255,69,0)   -- naranja rojizo
+			local bottomEnd = Color3.fromRGB(0,0,0)         -- negro
+			local bottomColor = bottomStart:Lerp(bottomEnd, 1 - percent)
+			
+			fillGradient.Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0, topColor),
 				ColorSequenceKeypoint.new(1, bottomColor)
 			})
-			energyBar.Size = UDim2.new((energy / ENERGY_DURATION), -4, 1, -4)
 			
 			local hrp = player.Character:WaitForChild("HumanoidRootPart")
 			
+			-- Si se agota la energía, forzar descenso y detener animación de ascenso
 			if energy <= 0 then
 				if holdingJump then
 					holdingJump = false
-					ascendTrack:Stop()
+					if ascendButton then
+						if ascendButton.ascIcon then
+							ascendButton.ascIcon.ImageColor3 = Color3.fromRGB(255,255,255)
+						end
+						ascendTrack:Stop()
+					end
 				end
 				if not descendTrack.IsPlaying then
 					descendTrack:Play()
@@ -510,7 +495,5 @@ if game.PlaceId == 14722542056 then
 		end
 	end)
 	
-	characterValue.Changed:Connect(function()
-		glideButton.Visible = canUseGlide()
-	end)
-endq
+	-- Se elimina la conexión a characterValue, ya que no se utiliza
+end
