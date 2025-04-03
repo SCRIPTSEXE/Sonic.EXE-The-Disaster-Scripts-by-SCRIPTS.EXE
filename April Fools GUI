@@ -1,0 +1,445 @@
+--[[
+  GUI Principal Mejorada con Categorías, Decoración y Funcionalidades Extras:
+   • Barra lateral para navegar entre secciones: Animations, Toggles, Scripts.
+   • Créditos y decoraciones.
+   • Sonidos graciosos se reproducen en cada interacción.
+   • Nuevos toggles: No Fog, Follow Head, etc.
+   • Las animaciones se reproducen en bucle (generándose constantemente) y se desactivan al volver a presionar.
+--]]
+
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
+
+-------------------------------
+-- Sonidos Graciosos (IDs verificados)
+-------------------------------
+local function playFunnySound()
+    local sounds = {
+        "rbxassetid://301964312", -- Ejemplo: sonido de risa
+        "rbxassetid://301964308", 
+        "rbxassetid://301964313", 
+        "rbxassetid://183763506"
+    }
+    local soundId = sounds[math.random(#sounds)]
+    local sound = Instance.new("Sound")
+    sound.Parent = game.Workspace
+    sound.SoundId = soundId
+    sound.Volume = 2
+    sound:Play()
+    Debris:AddItem(sound, sound.TimeLength or 3)
+end
+
+-------------------------------
+-- ScreenGui y contenedor principal
+-------------------------------
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "STD_GUI"
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0.5, 0, 0.6, 0)  -- Tamaño compacto
+mainFrame.Position = UDim2.new(0.25, 0, 0.2, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(173,216,230) -- Azul pastel
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Gradiente vertical similar al principal
+local gradient = Instance.new("UIGradient")
+gradient.Rotation = 90
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(173,216,230)), -- Azul pastel (arriba)
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0,191,255))     -- Azul fuerte (abajo)
+})
+gradient.Parent = mainFrame
+
+-- Bordes redondeados y contornos
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 20)
+frameCorner.Parent = mainFrame
+
+local frameStroke = Instance.new("UIStroke")
+frameStroke.Thickness = 2
+frameStroke.Color = Color3.fromRGB(255,255,255)
+frameStroke.Parent = mainFrame
+
+-------------------------------
+-- Botón de cierre
+-------------------------------
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255,69,69)
+closeButton.Text = "X"
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextScaled = true
+closeButton.TextColor3 = Color3.new(1,1,1)
+closeButton.Parent = mainFrame
+closeButton.MouseButton1Click:Connect(function()
+    playFunnySound()
+    screenGui:Destroy()
+end)
+
+-------------------------------
+-- Función para aplicar contorno a textos
+-------------------------------
+local function addTextOutline(guiObject)
+    guiObject.TextStrokeTransparency = 0
+    guiObject.TextStrokeColor3 = Color3.new(0,0,0)
+    local txtStroke = Instance.new("UIStroke")
+    txtStroke.Thickness = 1
+    txtStroke.Color = Color3.fromRGB(255,255,255)
+    txtStroke.Parent = guiObject
+end
+
+-------------------------------
+-- Barra lateral de categorías
+-------------------------------
+local listBar = Instance.new("Frame")
+listBar.Size = UDim2.new(0.3, 0, 1, 0)
+listBar.Position = UDim2.new(0, 0, 0, 0)
+listBar.BackgroundColor3 = Color3.fromRGB(50,50,50)
+listBar.BackgroundTransparency = 0.3
+listBar.Parent = mainFrame
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 20)
+listCorner.Parent = listBar
+
+local categories = {"Animations", "Toggles", "Scripts"}
+local categoryButtons = {}
+for i, cat in ipairs(categories) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 40)
+    btn.Position = UDim2.new(0, 5, 0, 5 + (i-1)*45)
+    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    btn.Text = cat
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextScaled = true
+    addTextOutline(btn)
+    btn.Parent = listBar
+    categoryButtons[cat] = btn
+    btn.MouseButton1Click:Connect(function()
+        playFunnySound()
+        switchSection(cat)
+    end)
+end
+
+-------------------------------
+-- Área de contenido (ScrollFrame)
+-------------------------------
+local contentFrame = Instance.new("ScrollingFrame")
+contentFrame.Size = UDim2.new(0.7, -10, 1, -10)
+contentFrame.Position = UDim2.new(0.3, 5, 0, 5)
+contentFrame.BackgroundColor3 = Color3.fromRGB(255,255,255)
+contentFrame.BackgroundTransparency = 1
+contentFrame.ScrollBarThickness = 6
+contentFrame.Parent = mainFrame
+
+-------------------------------
+-- Función para limpiar el contenido
+-------------------------------
+local function clearContent()
+    for _, child in ipairs(contentFrame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            child:Destroy()
+        end
+    end
+end
+
+-------------------------------
+-- Sección Animations: Animaciones en bucle
+-------------------------------
+local animations = {
+    {Name = "Headless",      ID = 9631026714},
+    {Name = "Eyeless",       ID = 14217000298},
+    {Name = "Legs??",        ID = 11701891402},
+    {Name = "SPIN",          ID = 10548098309},
+    {Name = "Help",          ID = 14975391212},
+}
+local animState = {}
+local function populateAnimations()
+    clearContent()
+    for i, anim in ipairs(animations) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.9, 0, 0, 40)
+        btn.Position = UDim2.new(0.05, 0, 0, (i-1)*45)
+        btn.BackgroundColor3 = Color3.fromRGB(30,144,255)
+        btn.Text = anim.Name.." (OFF)"
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextScaled = true
+        addTextOutline(btn)
+        btn.Parent = contentFrame
+        btn.MouseButton1Click:Connect(function()
+            playFunnySound()
+            local character = player.Character
+            if character and character:FindFirstChild("Humanoid") then
+                local humanoid = character:FindFirstChild("Humanoid")
+                if not animState[anim.Name] then
+                    local newAnim = Instance.new("Animation")
+                    newAnim.AnimationId = "rbxassetid://" .. anim.ID
+                    local track = humanoid:LoadAnimation(newAnim)
+                    track.Looped = true  -- Se reproduce constantemente
+                    track:Play()
+                    animState[anim.Name] = track
+                    btn.Text = anim.Name.." (ON)"
+                else
+                    animState[anim.Name]:Stop()
+                    animState[anim.Name] = nil
+                    btn.Text = anim.Name.." (OFF)"
+                end
+            end
+        end)
+    end
+end
+
+-------------------------------
+-- Sección Toggles (incluye No Fog y Follow Head)
+-------------------------------
+local toggleStates = {
+    Troll = false,
+    BigHitbox = false,
+    SpamShadow = false,
+    SpamBlaze = false,
+    RougeFlash = false,
+    NoFog = false,
+    FollowHead = false,
+}
+
+-- Toggle: Troll (Sally Spam)
+spawn(function()  
+    while true do
+        if toggleStates.Troll then
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local drownArgs = { [1] = "drown" }
+                    game:GetService("ReplicatedStorage").remotes.actions:FireServer(unpack(drownArgs))
+                    game:GetService("ReplicatedStorage").remotes.infect:FireServer()
+                    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("stats") then
+                        player.PlayerGui.stats:SetAttribute("isDead", false)
+                    end
+                    local shieldArgs = { [1] = "shieldShare", [2] = p.Character, [3] = "shield" }
+                    game:GetService("ReplicatedStorage").remotes.abilities:FireServer(unpack(shieldArgs))
+                end
+            end
+        end
+        wait(0.1)
+    end
+end)
+
+-- Toggle: Spam Shadow
+spawn(function()  
+    while true do
+        if toggleStates.SpamShadow then
+            local args = { [1] = "boostPush", [2] = {} }
+            game:GetService("ReplicatedStorage").remotes.abilities:FireServer(unpack(args))
+        end
+        wait(0.01)
+    end
+end)
+
+-- Toggle: Spam Blaze
+spawn(function()  
+    while true do
+        if toggleStates.SpamBlaze then
+            local args = { [1] = Color3.new(1,1,1), [2] = "HeatWave" }
+            game:GetService("ReplicatedStorage").remotes.abilityCooldowns:FireServer(unpack(args))
+        end
+        wait(0.01)
+    end
+end)
+
+-- Toggle: Big Hitbox
+spawn(function()  
+    while true do
+        if toggleStates.BigHitbox then
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local args = { [1] = p.Character }
+                    game:GetService("ReplicatedStorage").remotes.hitReg:FireServer(unpack(args))
+                end
+            end
+        end
+        wait(0.1)
+    end
+end)
+
+-- Toggle: Rouge Flashbang
+spawn(function()  
+    while true do
+        if toggleStates.RougeFlash then
+            local character = player.Character or player.CharacterAdded:Wait()
+            local hrp = character:WaitForChild("HumanoidRootPart")
+            local pos = hrp.Position
+            local flashArgs = { [1] = "flashbang", [2] = pos }
+            game:GetService("ReplicatedStorage").remotes.abilities:FireServer(unpack(flashArgs))
+            local drownArgs = { [1] = "drown" }
+            game:GetService("ReplicatedStorage").remotes.actions:FireServer(unpack(drownArgs))
+            game:GetService("ReplicatedStorage").remotes.infect:FireServer()
+            if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("stats") then
+                player.PlayerGui.stats:SetAttribute("isDead", false)
+            end
+        end
+        wait(0.01)
+    end
+end)
+
+-- Toggle: No Fog
+local defaultFogEnd = Lighting.FogEnd
+local defaultFogStart = Lighting.FogStart
+spawn(function()
+    while true do
+        if toggleStates.NoFog then
+            Lighting.FogEnd = 1e9
+            Lighting.FogStart = 0
+        else
+            Lighting.FogEnd = defaultFogEnd
+            Lighting.FogStart = defaultFogStart
+        end
+        wait(0.1)
+    end
+end)
+
+-- Toggle: Follow Head
+local followTarget = nil
+spawn(function()
+    while true do
+        if toggleStates.FollowHead and followTarget and followTarget.Character and followTarget.Character:FindFirstChild("Head") then
+            Camera.CameraSubject = followTarget.Character.Head
+        end
+        wait(0.1)
+    end
+end)
+local function onJump()
+    if toggleStates.FollowHead then
+        toggleStates.FollowHead = false
+        followTarget = nil
+        print("Follow Head desactivado por salto.")
+    end
+end
+if player.Character and player.Character:FindFirstChild("Humanoid") then
+    player.Character.Humanoid.Jumping:Connect(onJump)
+end
+player.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid").Jumping:Connect(onJump)
+end)
+
+-- Función para desplegar una lista de jugadores para Follow Head
+local function populateFollowHeadSelection()
+    clearContent()
+    local index = 0
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= player then
+            index = index + 1
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0.9, 0, 0, 40)
+            btn.Position = UDim2.new(0.05, 0, 0, (index-1)*45)
+            btn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+            btn.Text = p.Name
+            btn.Font = Enum.Font.SourceSansBold
+            btn.TextScaled = true
+            addTextOutline(btn)
+            btn.Parent = contentFrame
+            btn.MouseButton1Click:Connect(function()
+                playFunnySound()
+                followTarget = p
+                btn.Text = p.Name .. " (Selected)"
+            end)
+        end
+    end
+end
+
+-------------------------------
+-- Lista de toggles para la sección "Toggles"
+-------------------------------
+local toggles = {
+    {Name = "Troll",         Display = "Troll"},
+    {Name = "BigHitbox",     Display = "Big Hitbox"},
+    {Name = "SpamShadow",    Display = "Spam Shadow"},
+    {Name = "SpamBlaze",     Display = "Spam Blaze"},
+    {Name = "RougeFlash",    Display = "Rouge Flashbang"},
+    {Name = "NoFog",         Display = "No Fog"},
+    {Name = "FollowHead",    Display = "Follow Head"},
+}
+local function populateToggles()
+    clearContent()
+    for i, toggle in ipairs(toggles) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.9, 0, 0, 40)
+        btn.Position = UDim2.new(0.05, 0, 0, (i-1)*45)
+        btn.BackgroundColor3 = Color3.fromRGB(255,0,0)
+        btn.Text = toggle.Display .. " (OFF)"
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextScaled = true
+        addTextOutline(btn)
+        btn.Parent = contentFrame
+        btn.MouseButton1Click:Connect(function()
+            playFunnySound()
+            if toggle.Name == "FollowHead" then
+                if not toggleStates.FollowHead then
+                    populateFollowHeadSelection()
+                end
+            end
+            toggleStates[toggle.Name] = not toggleStates[toggle.Name]
+            local state = toggleStates[toggle.Name] and "ON" or "OFF"
+            btn.Text = toggle.Display .. " (" .. state .. ")"
+            btn.BackgroundColor3 = toggleStates[toggle.Name] and Color3.new(0,1,0) or Color3.new(1,0,0)
+        end)
+    end
+end
+
+-------------------------------
+-- Sección Scripts: ejecutar loadstring
+-------------------------------
+local function populateScripts()
+    clearContent()
+    local creamFlyButton = Instance.new("TextButton")
+    creamFlyButton.Size = UDim2.new(0.9, 0, 0, 40)
+    creamFlyButton.Position = UDim2.new(0.05, 0, 0, 0)
+    creamFlyButton.BackgroundColor3 = Color3.fromRGB(30,144,255)
+    creamFlyButton.Text = "Cream Fly (for every character)"
+    creamFlyButton.Font = Enum.Font.SourceSansBold
+    creamFlyButton.TextScaled = true
+    addTextOutline(creamFlyButton)
+    creamFlyButton.Parent = contentFrame
+
+    creamFlyButton.MouseButton1Click:Connect(function()
+        playFunnySound()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/SCRIPTSEXE/Sonic.EXE-The-Disaster-Scripts-by-SCRIPTS.EXE/refs/heads/main/Cream's%20Glide"))()
+    end)
+end
+
+-------------------------------
+-- Función para cambiar la sección
+-------------------------------
+function switchSection(section)
+    if section == "Animations" then
+        populateAnimations()
+    elseif section == "Toggles" then
+        populateToggles()
+    elseif section == "Scripts" then
+        populateScripts()
+    end
+end
+
+-- Por defecto se muestra la sección "Animations"
+switchSection("Animations")
+
+-------------------------------
+-- Créditos y decoración adicional
+-------------------------------
+local creditsLabel = Instance.new("TextLabel")
+creditsLabel.Size = UDim2.new(1, 0, 0, 25)
+creditsLabel.Position = UDim2.new(0, 0, 1, -30)
+creditsLabel.BackgroundTransparency = 1
+creditsLabel.Text = "By Script.EXE, wait for more"
+creditsLabel.Font = Enum.Font.SourceSansBold
+creditsLabel.TextScaled = true
+creditsLabel.TextColor3 = Color3.new(1,1,1)
+addTextOutline(creditsLabel)
+creditsLabel.Parent = mainFrame
